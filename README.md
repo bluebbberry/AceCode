@@ -1,6 +1,7 @@
 # SemanticWebBrowser
 
-Description of idea: [Semantic Web Browser_2025_08_13.pdf](https://github.com/user-attachments/files/21748548/Semantic.Web.Browser_2025_08_13.pdf)
+Description of idea: [Semantic.Web.Browser_2025_08_13_2.pdf](https://github.com/user-attachments/files/21749253/Semantic.Web.Browser_2025_08_13_2.pdf)
+
 
 For the universal processing of documents based on attempto controlled german (based on https://en.wikipedia.org/wiki/Attempto_Controlled_English).
 
