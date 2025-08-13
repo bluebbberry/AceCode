@@ -1,6 +1,8 @@
-# Deterministic-Universal-Document-Inference-Engine (DUDI-E)
+# SemanticWebBrowser
 
- For the universal processing of documents based on attempto controlled german (based on https://en.wikipedia.org/wiki/Attempto_Controlled_English).
+Description of idea: [Semantic Web Browser_2025_08_13.pdf](https://github.com/user-attachments/files/21748548/Semantic.Web.Browser_2025_08_13.pdf)
+
+For the universal processing of documents based on attempto controlled german (based on https://en.wikipedia.org/wiki/Attempto_Controlled_English).
 
 Counter-design to vibe-coding:
 
@@ -21,7 +23,3 @@ The fundamental idea behind all of this is to give users back control on their l
 ## UI-Preview:
 
 <img width="1536" height="524" alt="image" src="https://github.com/user-attachments/assets/826e2e0e-dbd0-4275-9b70-5b9e19e54ca6" />
-
-## Semantic Web Browser:
-
-As a semantic web browser: [Semantic Web Browser_2025_08_10_5-1.pdf](https://github.com/user-attachments/files/21707227/Semantic.Web.Browser_2025_08_10_5-1.pdf)
