@@ -2,6 +2,14 @@
 
 Description of idea: [Semantic.Web.Browser_2025_08_13_5.pdf](https://github.com/user-attachments/files/21751119/Semantic.Web.Browser_2025_08_13_5.pdf)
 
+## UI Impressions
+
+![img.png](docs/img.png)
+
+![img.png](docs/img_1.png)
+
+## Other Thoughts
+
 For the universal processing of documents based on attempto controlled german (based on https://en.wikipedia.org/wiki/Attempto_Controlled_English).
 
 Counter-design to vibe-coding:
