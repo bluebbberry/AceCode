@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Semantic Web Browser Web Frontend
+Semantic Web Browser Web Frontend - FIXED VERSION
 Flask-based interface for editing ACE rules and executing queries
 """
 
@@ -19,7 +19,7 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 
 
-# Simple Prolog-like inference engine (same as before)
+# Simple Prolog-like inference engine (FIXED)
 class PrologEngine:
     def __init__(self):
         self.facts = {}
@@ -46,53 +46,90 @@ class PrologEngine:
 
     def query(self, predicate: str, *args) -> List[Dict]:
         self.execution_trace.append(f"Query: {predicate}({', '.join(map(str, args))})")
+        self.execution_trace.append(f"Available facts: {list(self.facts.keys())}")
         results = []
 
         # Check facts first
         if predicate in self.facts:
+            self.execution_trace.append(f"  Found {len(self.facts[predicate])} facts for {predicate}")
             for fact_args in self.facts[predicate]:
+                self.execution_trace.append(f"  Trying to unify with fact: {predicate}{fact_args}")
                 bindings = self._try_unify(args, fact_args)
                 if bindings is not None:
-                    self.execution_trace.append(f"  ✓ Found fact: {predicate}{fact_args}")
+                    self.execution_trace.append(f"  ✓ Found fact: {predicate}{fact_args} with bindings {bindings}")
                     results.append({'bindings': bindings})
+                else:
+                    self.execution_trace.append(f"  ✗ Unification failed with fact: {predicate}{fact_args}")
+        else:
+            self.execution_trace.append(f"  No facts found for predicate: {predicate}")
 
         # Check rules
-        for head, body in self.rules:
+        self.execution_trace.append(f"  Checking {len(self.rules)} rules...")
+        for i, (head, body) in enumerate(self.rules):
             head_pred, head_args = head
+            self.execution_trace.append(f"  Rule {i + 1}: {head_pred}{head_args}")
             if head_pred == predicate:
+                self.execution_trace.append(f"  Rule {i + 1} matches predicate {predicate}")
                 bindings = self._try_unify(args, head_args)
                 if bindings is not None:
-                    self.execution_trace.append(f"  Checking rule: {head_pred}{head_args}")
+                    self.execution_trace.append(f"  Rule {i + 1}: head unification successful with bindings {bindings}")
                     if self._evaluate_body_with_bindings(body, bindings):
-                        self.execution_trace.append(f"  ✓ Rule satisfied")
+                        self.execution_trace.append(f"  ✓ Rule {i + 1} satisfied")
                         results.append({'bindings': bindings})
                     else:
-                        self.execution_trace.append(f"  ✗ Rule failed")
+                        self.execution_trace.append(f"  ✗ Rule {i + 1} failed")
+                else:
+                    self.execution_trace.append(f"  ✗ Rule {i + 1}: head unification failed")
+            else:
+                self.execution_trace.append(f"  Rule {i + 1}: predicate mismatch ({head_pred} != {predicate})")
 
+        self.execution_trace.append(f"Query result: {len(results)} results found")
         return results
 
     def _try_unify(self, pattern, fact):
         """Try to unify pattern with fact, return bindings if successful, None otherwise"""
+        self.execution_trace.append(f"      Trying to unify pattern {pattern} with fact {fact}")
+
         if len(pattern) != len(fact):
+            self.execution_trace.append(f"      Unification failed: length mismatch ({len(pattern)} != {len(fact)})")
             return None
 
         bindings = {}
-        for p, f in zip(pattern, fact):
-            if isinstance(p, str) and p.startswith('_'):
-                # Variable in pattern
+        for i, (p, f) in enumerate(zip(pattern, fact)):
+            self.execution_trace.append(f"      Position {i}: pattern '{p}' vs fact '{f}'")
+            # FIXED: Check if the FACT contains a variable (not the pattern)
+            if isinstance(f, str) and f.startswith('_'):
+                # Variable in fact - bind it to the pattern value
+                if f in bindings:
+                    if bindings[f] != p:
+                        self.execution_trace.append(f"      Unification failed: inconsistent binding for {f}")
+                        return None  # Inconsistent binding
+                else:
+                    bindings[f] = p
+                    self.execution_trace.append(f"      Bound variable {f} to {p}")
+            elif isinstance(p, str) and p.startswith('_'):
+                # Variable in pattern - bind it to the fact value
                 if p in bindings:
                     if bindings[p] != f:
+                        self.execution_trace.append(f"      Unification failed: inconsistent binding for {p}")
                         return None  # Inconsistent binding
                 else:
                     bindings[p] = f
+                    self.execution_trace.append(f"      Bound variable {p} to {f}")
             elif p != f:
+                self.execution_trace.append(f"      Unification failed: {p} != {f}")
                 return None  # Mismatch
 
+        self.execution_trace.append(f"      Unification successful: {bindings}")
         return bindings
 
     def _evaluate_body_with_bindings(self, body: List[Tuple[str, tuple]], bindings: Dict) -> bool:
         """Evaluate rule body with variable bindings"""
-        for pred, args in body:
+        self.execution_trace.append(f"    Evaluating rule body with bindings: {bindings}")
+
+        for i, (pred, args) in enumerate(body):
+            self.execution_trace.append(f"    Step {i + 1}: {pred}({', '.join(map(str, args))})")
+
             # Substitute variables with their bindings
             substituted_args = []
             for arg in args:
@@ -100,6 +137,8 @@ class PrologEngine:
                     substituted_args.append(bindings[arg])
                 else:
                     substituted_args.append(arg)
+
+            self.execution_trace.append(f"    After substitution: {pred}({', '.join(map(str, substituted_args))})")
 
             # Handle special predicates
             if pred == "age_less_than":
@@ -112,8 +151,12 @@ class PrologEngine:
                     return False
             elif pred == "income_less_than":
                 person, income_limit = substituted_args
+                self.execution_trace.append(
+                    f"    Checking yearly_income facts: {self.facts.get('yearly_income', 'None')}")
                 if 'yearly_income' in self.facts:
+                    income_found = False
                     for fact_args in self.facts['yearly_income']:
+                        self.execution_trace.append(f"      Checking fact: {fact_args}")
                         if fact_args[0] == person:
                             actual_income = fact_args[1]
                             result = actual_income < income_limit
@@ -121,10 +164,11 @@ class PrologEngine:
                                 f"    income_less_than({person}, {income_limit}) → income={actual_income}, result={result}")
                             if not result:
                                 return False
+                            income_found = True
                             break
-                    else:
+                    if not income_found:
                         self.execution_trace.append(
-                            f"    income_less_than({person}, {income_limit}) → no income found, result=False")
+                            f"    income_less_than({person}, {income_limit}) → no income found for person, result=False")
                         return False
                 else:
                     self.execution_trace.append(
@@ -133,10 +177,14 @@ class PrologEngine:
             elif pred == "has_child_under_18":
                 person = substituted_args[0]
                 self.execution_trace.append(f"    Checking has_child_under_18({person})")
+                self.execution_trace.append(f"    has_child facts: {self.facts.get('has_child', 'None')}")
+                self.execution_trace.append(f"    birthdate facts: {self.facts.get('birthdate', 'None')}")
+
                 if 'has_child' in self.facts:
                     has_child_under_18 = False
                     for parent, child in self.facts['has_child']:
                         if parent == person:
+                            self.execution_trace.append(f"      Found child {child} for parent {parent}")
                             child_age = self._calculate_age(child)
                             self.execution_trace.append(f"      Child {child} age: {child_age}")
                             if child_age < 18:
@@ -153,14 +201,18 @@ class PrologEngine:
                     return False
             else:
                 # Regular predicate - query it
-                results = self.query(pred, *substituted_args)
-                if not results:
+                self.execution_trace.append(
+                    f"    Querying regular predicate: {pred}({', '.join(map(str, substituted_args))})")
+                sub_results = self.query(pred, *substituted_args)
+                if not sub_results:
                     self.execution_trace.append(
-                        f"    {pred}({', '.join(map(str, substituted_args))}) → no results found")
+                        f"    {pred}({', '.join(map(str, substituted_args))}) → no results found, FAILED")
                     return False
                 else:
                     self.execution_trace.append(
-                        f"    {pred}({', '.join(map(str, substituted_args))}) → found {len(results)} results")
+                        f"    {pred}({', '.join(map(str, substituted_args))}) → found {len(sub_results)} results, PASSED")
+
+        self.execution_trace.append("    ✓ All rule body conditions satisfied!")
         return True
 
     def _calculate_age(self, person: str) -> int:
@@ -348,16 +400,31 @@ then the student_support_amount is 400 euros per month."""
 
         # Add facts from database
         ace_facts = self.sql_to_ace()
+        self.prolog.execution_trace.append(f"Loading {len(ace_facts)} facts from database:")
         for fact in ace_facts:
+            self.prolog.execution_trace.append(f"  {fact}")
             self._parse_ace_fact(fact)
 
+        # Show what facts were actually parsed
+        self.prolog.execution_trace.append("\nParsed facts summary:")
+        for predicate, facts in self.prolog.facts.items():
+            self.prolog.execution_trace.append(f"  {predicate}: {facts}")
+
         # Parse and add rules (simplified - in reality would need full ACE parser)
-        if "kindergeld" in ace_rules.lower():
+        # FIXED: Always add kindergeld rules when parsing any rules
+        if "kindergeld" in ace_rules.lower() or "If a person has children" in ace_rules:
             self._add_kindergeld_rules()
         if "tax_relief" in ace_rules.lower() or "low_income_tax_relief" in ace_rules.lower():
             self._add_tax_relief_rules()
         if "student_support" in ace_rules.lower():
             self._add_student_support_rules()
+
+        # Show what rules were added
+        self.prolog.execution_trace.append(f"\nAdded {len(self.prolog.rules)} rules:")
+        for i, (head, body) in enumerate(self.prolog.rules):
+            head_str = f"{head[0]}({', '.join(map(str, head[1]))})"
+            body_str = " AND ".join([f"{b[0]}({', '.join(map(str, b[1]))})" for b in body])
+            self.prolog.execution_trace.append(f"  Rule {i + 1}: {head_str} :- {body_str}")
 
     def _parse_ace_fact(self, ace_fact: str):
         """Parse ACE fact and add to Prolog"""
@@ -393,8 +460,8 @@ then the student_support_amount is 400 euros per month."""
                 self.prolog.add_fact("studies_full_time", match.group(1))
 
     def _add_kindergeld_rules(self):
-        """Add Kindergeld rules"""
-        # Main eligibility rule
+        """Add Kindergeld rules - FIXED VERSION"""
+        # Main eligibility rule - FIXED: Remove extra parentheses around _person
         self.prolog.add_rule(
             ("eligible_for_kindergeld", ("_person",)),
             [
@@ -403,16 +470,6 @@ then the student_support_amount is 400 euros per month."""
                 ("income_less_than", ("_person", 68000)),
                 ("has_child_under_18", ("_person",)),
                 ("tax_residence", ("_person", "germany"))
-            ]
-        )
-
-        # Helper rule to check if person has any child under 18
-        # This rule will succeed if there exists at least one child under 18
-        self.prolog.add_rule(
-            ("has_child_under_18", ("_person",)),
-            [
-                ("has_child", ("_person", "_child")),
-                ("age_less_than", ("_child", 18))
             ]
         )
 
@@ -483,6 +540,9 @@ def execute_query():
             if "eligible" in query_lower:
                 if "kindergeld" in query_lower:
                     query_results = browser.prolog.query("eligible_for_kindergeld", person)
+                    browser.prolog.execution_trace.append(
+                        f"DEBUG: Query called with predicate='eligible_for_kindergeld', person='{person}'")
+                    browser.prolog.execution_trace.append(f"DEBUG: Query results: {query_results}")
                     if query_results:
                         answer = f"Yes, {person} is eligible for Kindergeld."
                         results = [{"result": "eligible", "person": person, "benefit": "Kindergeld"}]
