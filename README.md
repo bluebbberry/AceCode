@@ -2,7 +2,11 @@
 
 Description of idea: [Semantic.Web.Browser_2025_08_13_5.pdf](https://github.com/user-attachments/files/21751119/Semantic.Web.Browser_2025_08_13_5.pdf)
 
-## UI Impressions
+## Demo
+
+Video-Demo: https://makertube.net/w/sF8xPqrsawWarvyxuW8kbh
+
+Screenshots:
 
 ![img.png](docs/img.png)
 
