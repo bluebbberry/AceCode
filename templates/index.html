@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Semantic Web Browser</title>
+    <title>Semantic Web Browser - Enhanced</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .header { background: #4CAF50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
         .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; }
+        .two-column { display: flex; gap: 20px; }
+        .column { flex: 1; }
         textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; font-family: monospace; }
         button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
         button:hover { background: #45a049; }
+        .secondary-button { background: #2196F3; }
+        .secondary-button:hover { background: #0b7dda; }
         .results { background: #f9f9f9; padding: 15px; border-radius: 3px; margin-top: 10px; }
         .success { color: green; font-weight: bold; }
         .error { color: red; font-weight: bold; }
@@ -20,26 +24,63 @@
         .example:hover { background: #d0e7ff; }
         .answer-box { background: #e8f5e8; border: 2px solid #4CAF50; padding: 15px; border-radius: 5px; margin: 10px 0; }
         .answer-box h4 { margin-top: 0; color: #2e7d32; }
+        .fact-editor { background: #fff3e0; border: 2px solid #ff9800; }
+        .fact-examples { background: #f3e5f5; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        h4 { margin-top: 0; color: #333; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Semantic Web Browser</h1>
-            <p>ACE → Prolog → Results Pipeline</p>
+            <h1>🔍 Semantic Web Browser - Enhanced</h1>
+            <p>ACE Rules → Custom Facts → Prolog → Results Pipeline</p>
+        </div>
+
+        <div class="two-column">
+            <div class="column">
+                <div class="section">
+                    <h3>1. ACE Rules</h3>
+                    <button onclick="loadKindergeld()">Load Kindergeld Rules</button>
+                    <button onclick="loadTaxRelief()">Load Tax Relief Rules</button>
+                    <button onclick="clearRules()">Clear Rules</button>
+                    <br><br>
+                    <textarea id="aceRules" rows="12" placeholder="Enter your ACE rules here..."></textarea>
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="section fact-editor">
+                    <h3>2. Edit Facts About Persons</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button class="secondary-button" onclick="loadDatabaseFacts()">Load from Database</button>
+                        <button class="secondary-button" onclick="addExamplePerson()">Add Example Person</button>
+                        <button onclick="clearFacts()">Clear Facts</button>
+                    </div>
+                    <textarea id="factsEditor" rows="12" placeholder="Enter facts in ACE format, e.g.:
+john_doe is a person.
+john_doe has a yearly_income of 35000 euros.
+john_doe has tax_residence in Germany.
+john_doe has child child_123.
+child_123 has a birthdate of 2010-05-15."></textarea>
+
+                    <div class="fact-examples">
+                        <strong>📝 Fact Examples:</strong><br>
+                        <small>
+                        • <code>person_name is a person.</code><br>
+                        • <code>person_name has a yearly_income of 45000 euros.</code><br>
+                        • <code>person_name has tax_residence in Germany.</code><br>
+                        • <code>person_name has child child_name.</code><br>
+                        • <code>child_name has a birthdate of 2015-03-20.</code><br>
+                        • <code>person_name is a student.</code><br>
+                        • <code>person_name studies full_time.</code>
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="section">
-            <h3>1. ACE Rules</h3>
-            <button onclick="loadKindergeld()">Load Kindergeld Rules</button>
-            <button onclick="loadTaxRelief()">Load Tax Relief Rules</button>
-            <button onclick="clearRules()">Clear</button>
-            <br><br>
-            <textarea id="aceRules" rows="15" placeholder="Enter your ACE rules here..."></textarea>
-        </div>
-
-        <div class="section">
-            <h3>2. Query</h3>
+            <h3>3. Query</h3>
             <textarea id="query" rows="3" placeholder="Enter your query here...">Is maria_schmidt eligible for Kindergeld?</textarea>
             <br><br>
             <strong>Example queries:</strong><br>
@@ -48,12 +89,12 @@
             <span class="example" onclick="setQuery('Who has children?')">Who has children?</span>
             <span class="example" onclick="setQuery('What is the kindergeld_amount for maria_schmidt?')">What is the kindergeld amount for maria_schmidt?</span>
             <br><br>
-            <button onclick="executeQuery()">Execute Query</button>
-            <button onclick="viewDatabase()">View Database</button>
+            <button onclick="executeQuery()">🚀 Execute Query</button>
+            <button class="secondary-button" onclick="viewDatabase()">📊 View Database</button>
         </div>
 
         <div class="section">
-            <h3>3. Results</h3>
+            <h3>4. Results</h3>
             <div id="results" class="results" style="display: none;">
                 <div id="resultContent"></div>
             </div>
@@ -65,6 +106,9 @@
     </div>
 
     <script>
+        // Store the current facts from the server
+        const currentFactsFromDB = {{ current_facts|tojson }};
+
         // Embedded rule templates
         const kindergeldRules = `If a person has children 
 and the person's yearly_income is below 68000 euros
@@ -80,6 +124,12 @@ If a person is eligible for low_income_tax_relief
 and the person has children
 then the person gets additional_family_tax_benefits.`;
 
+        const examplePersonFacts = `john_doe is a person.
+john_doe has a yearly_income of 35000 euros.
+john_doe has tax_residence in Germany.
+john_doe has child child_456.
+child_456 has a birthdate of 2010-05-15.`;
+
         function loadKindergeld() {
             document.getElementById('aceRules').value = kindergeldRules;
         }
@@ -92,6 +142,20 @@ then the person gets additional_family_tax_benefits.`;
             document.getElementById('aceRules').value = '';
         }
 
+        function loadDatabaseFacts() {
+            document.getElementById('factsEditor').value = currentFactsFromDB;
+        }
+
+        function addExamplePerson() {
+            const currentFacts = document.getElementById('factsEditor').value;
+            const separator = currentFacts.trim() ? '\n\n' : '';
+            document.getElementById('factsEditor').value = currentFacts + separator + examplePersonFacts;
+        }
+
+        function clearFacts() {
+            document.getElementById('factsEditor').value = '';
+        }
+
         function setQuery(query) {
             document.getElementById('query').value = query;
         }
@@ -99,6 +163,7 @@ then the person gets additional_family_tax_benefits.`;
         async function executeQuery() {
             const rules = document.getElementById('aceRules').value;
             const query = document.getElementById('query').value;
+            const facts = document.getElementById('factsEditor').value;
 
             const resultsDiv = document.getElementById('results');
             const traceDiv = document.getElementById('trace');
@@ -109,7 +174,7 @@ then the person gets additional_family_tax_benefits.`;
                 const response = await fetch('/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rules, query })
+                    body: JSON.stringify({ rules, query, facts })
                 });
 
                 const data = await response.json();
@@ -158,7 +223,7 @@ then the person gets additional_family_tax_benefits.`;
 
                 const resultContent = document.getElementById('resultContent');
                 resultContent.innerHTML = `
-                    <div class="success">Database Content:</div>
+                    <div class="success">📊 Database Content:</div>
                     <h4>Persons:</h4>
                     <pre>${JSON.stringify(data.persons, null, 2)}</pre>
                     <h4>Children:</h4>
@@ -171,9 +236,10 @@ then the person gets additional_family_tax_benefits.`;
             }
         }
 
-        // Load default rules on page load
+        // Load default content on page load
         window.onload = function() {
             loadKindergeld();
+            loadDatabaseFacts();
         };
     </script>
 </body>
