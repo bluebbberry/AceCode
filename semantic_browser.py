@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Semantic Web Browser Web Frontend - FIXED VERSION
-Flask-based interface for editing ACE rules and executing queries
+Semantic Web Browser Web Frontend - ENHANCED WITH FACT EDITING
+Flask-based interface for editing ACE rules, facts, and executing queries
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
@@ -426,6 +426,45 @@ then the student_support_amount is 400 euros per month."""
             body_str = " AND ".join([f"{b[0]}({', '.join(map(str, b[1]))})" for b in body])
             self.prolog.execution_trace.append(f"  Rule {i + 1}: {head_str} :- {body_str}")
 
+    def parse_ace_rules_with_custom_facts(self, ace_rules: str, custom_facts: str = ""):
+        """Parse ACE rules and add to Prolog with custom facts override"""
+        self.prolog.clear()
+
+        # If custom facts are provided, use those instead of database
+        if custom_facts.strip():
+            self.prolog.execution_trace.append("Loading custom facts:")
+            fact_lines = [line.strip() for line in custom_facts.split('\n') if line.strip()]
+            for fact in fact_lines:
+                self.prolog.execution_trace.append(f"  {fact}")
+                self._parse_ace_fact(fact)
+        else:
+            # Add facts from database
+            ace_facts = self.sql_to_ace()
+            self.prolog.execution_trace.append(f"Loading {len(ace_facts)} facts from database:")
+            for fact in ace_facts:
+                self.prolog.execution_trace.append(f"  {fact}")
+                self._parse_ace_fact(fact)
+
+        # Show what facts were actually parsed
+        self.prolog.execution_trace.append("\nParsed facts summary:")
+        for predicate, facts in self.prolog.facts.items():
+            self.prolog.execution_trace.append(f"  {predicate}: {facts}")
+
+        # Parse and add rules
+        if "kindergeld" in ace_rules.lower() or "If a person has children" in ace_rules:
+            self._add_kindergeld_rules()
+        if "tax_relief" in ace_rules.lower() or "low_income_tax_relief" in ace_rules.lower():
+            self._add_tax_relief_rules()
+        if "student_support" in ace_rules.lower():
+            self._add_student_support_rules()
+
+        # Show what rules were added
+        self.prolog.execution_trace.append(f"\nAdded {len(self.prolog.rules)} rules:")
+        for i, (head, body) in enumerate(self.prolog.rules):
+            head_str = f"{head[0]}({', '.join(map(str, head[1]))})"
+            body_str = " AND ".join([f"{b[0]}({', '.join(map(str, b[1]))})" for b in body])
+            self.prolog.execution_trace.append(f"  Rule {i + 1}: {head_str} :- {body_str}")
+
     def _parse_ace_fact(self, ace_fact: str):
         """Parse ACE fact and add to Prolog"""
         ace_fact = ace_fact.strip('.')
@@ -511,9 +550,13 @@ browser = SemanticBrowserWeb()
 
 @app.route('/')
 def index():
+    # Get current facts from database
+    current_facts = "\n".join(browser.sql_to_ace())
+
     return render_template('index.html',
                            default_rules=browser.default_rules,
-                           example_queries=browser.example_queries)
+                           example_queries=browser.example_queries,
+                           current_facts=current_facts)
 
 
 @app.route('/execute', methods=['POST'])
@@ -521,10 +564,11 @@ def execute_query():
     data = request.get_json()
     ace_rules = data.get('rules', '')
     query = data.get('query', '')
+    custom_facts = data.get('facts', '')
 
     try:
-        # Parse rules and setup knowledge base
-        browser.parse_ace_rules(ace_rules)
+        # Parse rules and setup knowledge base (with optional custom facts)
+        browser.parse_ace_rules_with_custom_facts(ace_rules, custom_facts)
 
         # Parse query (simplified but more robust)
         query_lower = query.lower().strip('?').strip()
@@ -686,15 +730,19 @@ if __name__ == '__main__':
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Semantic Web Browser</title>
+    <title>Semantic Web Browser - Enhanced</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .header { background: #4CAF50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
         .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; }
+        .two-column { display: flex; gap: 20px; }
+        .column { flex: 1; }
         textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; font-family: monospace; }
         button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
         button:hover { background: #45a049; }
+        .secondary-button { background: #2196F3; }
+        .secondary-button:hover { background: #0b7dda; }
         .results { background: #f9f9f9; padding: 15px; border-radius: 3px; margin-top: 10px; }
         .success { color: green; font-weight: bold; }
         .error { color: red; font-weight: bold; }
@@ -703,26 +751,63 @@ if __name__ == '__main__':
         .example:hover { background: #d0e7ff; }
         .answer-box { background: #e8f5e8; border: 2px solid #4CAF50; padding: 15px; border-radius: 5px; margin: 10px 0; }
         .answer-box h4 { margin-top: 0; color: #2e7d32; }
+        .fact-editor { background: #fff3e0; border: 2px solid #ff9800; }
+        .fact-examples { background: #f3e5f5; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        h4 { margin-top: 0; color: #333; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Semantic Web Browser</h1>
-            <p>ACE → Prolog → Results Pipeline</p>
+            <h1>🔍 Semantic Web Browser - Enhanced</h1>
+            <p>ACE Rules → Custom Facts → Prolog → Results Pipeline</p>
+        </div>
+
+        <div class="two-column">
+            <div class="column">
+                <div class="section">
+                    <h3>1. ACE Rules</h3>
+                    <button onclick="loadKindergeld()">Load Kindergeld Rules</button>
+                    <button onclick="loadTaxRelief()">Load Tax Relief Rules</button>
+                    <button onclick="clearRules()">Clear Rules</button>
+                    <br><br>
+                    <textarea id="aceRules" rows="12" placeholder="Enter your ACE rules here..."></textarea>
+                </div>
+            </div>
+
+            <div class="column">
+                <div class="section fact-editor">
+                    <h3>2. Edit Facts About Persons</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button class="secondary-button" onclick="loadDatabaseFacts()">Load from Database</button>
+                        <button class="secondary-button" onclick="addExamplePerson()">Add Example Person</button>
+                        <button onclick="clearFacts()">Clear Facts</button>
+                    </div>
+                    <textarea id="factsEditor" rows="12" placeholder="Enter facts in ACE format, e.g.:
+john_doe is a person.
+john_doe has a yearly_income of 35000 euros.
+john_doe has tax_residence in Germany.
+john_doe has child child_123.
+child_123 has a birthdate of 2010-05-15."></textarea>
+
+                    <div class="fact-examples">
+                        <strong>📝 Fact Examples:</strong><br>
+                        <small>
+                        • <code>person_name is a person.</code><br>
+                        • <code>person_name has a yearly_income of 45000 euros.</code><br>
+                        • <code>person_name has tax_residence in Germany.</code><br>
+                        • <code>person_name has child child_name.</code><br>
+                        • <code>child_name has a birthdate of 2015-03-20.</code><br>
+                        • <code>person_name is a student.</code><br>
+                        • <code>person_name studies full_time.</code>
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="section">
-            <h3>1. ACE Rules</h3>
-            <button onclick="loadKindergeld()">Load Kindergeld Rules</button>
-            <button onclick="loadTaxRelief()">Load Tax Relief Rules</button>
-            <button onclick="clearRules()">Clear</button>
-            <br><br>
-            <textarea id="aceRules" rows="15" placeholder="Enter your ACE rules here..."></textarea>
-        </div>
-
-        <div class="section">
-            <h3>2. Query</h3>
+            <h3>3. Query</h3>
             <textarea id="query" rows="3" placeholder="Enter your query here...">Is maria_schmidt eligible for Kindergeld?</textarea>
             <br><br>
             <strong>Example queries:</strong><br>
@@ -731,12 +816,12 @@ if __name__ == '__main__':
             <span class="example" onclick="setQuery('Who has children?')">Who has children?</span>
             <span class="example" onclick="setQuery('What is the kindergeld_amount for maria_schmidt?')">What is the kindergeld amount for maria_schmidt?</span>
             <br><br>
-            <button onclick="executeQuery()">Execute Query</button>
-            <button onclick="viewDatabase()">View Database</button>
+            <button onclick="executeQuery()">🚀 Execute Query</button>
+            <button class="secondary-button" onclick="viewDatabase()">📊 View Database</button>
         </div>
 
         <div class="section">
-            <h3>3. Results</h3>
+            <h3>4. Results</h3>
             <div id="results" class="results" style="display: none;">
                 <div id="resultContent"></div>
             </div>
@@ -748,6 +833,9 @@ if __name__ == '__main__':
     </div>
 
     <script>
+        // Store the current facts from the server
+        const currentFactsFromDB = {{ current_facts|tojson }};
+
         // Embedded rule templates
         const kindergeldRules = `If a person has children 
 and the person's yearly_income is below 68000 euros
@@ -763,6 +851,12 @@ If a person is eligible for low_income_tax_relief
 and the person has children
 then the person gets additional_family_tax_benefits.`;
 
+        const examplePersonFacts = `john_doe is a person.
+john_doe has a yearly_income of 35000 euros.
+john_doe has tax_residence in Germany.
+john_doe has child child_456.
+child_456 has a birthdate of 2010-05-15.`;
+
         function loadKindergeld() {
             document.getElementById('aceRules').value = kindergeldRules;
         }
@@ -775,6 +869,20 @@ then the person gets additional_family_tax_benefits.`;
             document.getElementById('aceRules').value = '';
         }
 
+        function loadDatabaseFacts() {
+            document.getElementById('factsEditor').value = currentFactsFromDB;
+        }
+
+        function addExamplePerson() {
+            const currentFacts = document.getElementById('factsEditor').value;
+            const separator = currentFacts.trim() ? '\\n\\n' : '';
+            document.getElementById('factsEditor').value = currentFacts + separator + examplePersonFacts;
+        }
+
+        function clearFacts() {
+            document.getElementById('factsEditor').value = '';
+        }
+
         function setQuery(query) {
             document.getElementById('query').value = query;
         }
@@ -782,6 +890,7 @@ then the person gets additional_family_tax_benefits.`;
         async function executeQuery() {
             const rules = document.getElementById('aceRules').value;
             const query = document.getElementById('query').value;
+            const facts = document.getElementById('factsEditor').value;
 
             const resultsDiv = document.getElementById('results');
             const traceDiv = document.getElementById('trace');
@@ -792,7 +901,7 @@ then the person gets additional_family_tax_benefits.`;
                 const response = await fetch('/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rules, query })
+                    body: JSON.stringify({ rules, query, facts })
                 });
 
                 const data = await response.json();
@@ -841,7 +950,7 @@ then the person gets additional_family_tax_benefits.`;
 
                 const resultContent = document.getElementById('resultContent');
                 resultContent.innerHTML = `
-                    <div class="success">Database Content:</div>
+                    <div class="success">📊 Database Content:</div>
                     <h4>Persons:</h4>
                     <pre>${JSON.stringify(data.persons, null, 2)}</pre>
                     <h4>Children:</h4>
@@ -854,9 +963,10 @@ then the person gets additional_family_tax_benefits.`;
             }
         }
 
-        // Load default rules on page load
+        // Load default content on page load
         window.onload = function() {
             loadKindergeld();
+            loadDatabaseFacts();
         };
     </script>
 </body>
@@ -865,9 +975,10 @@ then the person gets additional_family_tax_benefits.`;
     with open('templates/index.html', 'w') as f:
         f.write(html_template)
 
-    print("🚀 Starting Semantic Web Browser Interface...")
+    print("🚀 Starting Enhanced Semantic Web Browser Interface...")
     print("📊 Database initialized with sample data")
+    print("✨ NEW: Editable facts text area added!")
     print("🌐 Open your browser to: http://localhost:5000")
-    print("💡 Try the example queries or modify the ACE rules!")
+    print("💡 Try editing facts and running queries!")
 
     app.run(debug=True, port=5000)
