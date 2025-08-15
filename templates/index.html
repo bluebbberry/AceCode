@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Web Browser</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #4CAF50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; font-family: monospace; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        .results { background: #f9f9f9; padding: 15px; border-radius: 3px; margin-top: 10px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .example { background: #e7f3ff; padding: 5px 10px; margin: 2px; border-radius: 3px; cursor: pointer; display: inline-block; }
+        .example:hover { background: #d0e7ff; }
+        .answer-box { background: #e8f5e8; border: 2px solid #4CAF50; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .answer-box h4 { margin-top: 0; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Semantic Web Browser</h1>
+            <p>ACE → Prolog → Results Pipeline</p>
+        </div>
+
+        <div class="section">
+            <h3>1. ACE Rules</h3>
+            <button onclick="loadKindergeld()">Load Kindergeld Rules</button>
+            <button onclick="loadTaxRelief()">Load Tax Relief Rules</button>
+            <button onclick="clearRules()">Clear</button>
+            <br><br>
+            <textarea id="aceRules" rows="15" placeholder="Enter your ACE rules here..."></textarea>
+        </div>
+
+        <div class="section">
+            <h3>2. Query</h3>
+            <textarea id="query" rows="3" placeholder="Enter your query here...">Is maria_schmidt eligible for Kindergeld?</textarea>
+            <br><br>
+            <strong>Example queries:</strong><br>
+            <span class="example" onclick="setQuery('Is maria_schmidt eligible for Kindergeld?')">Is maria_schmidt eligible for Kindergeld?</span>
+            <span class="example" onclick="setQuery('Who is eligible for low_income_tax_relief?')">Who is eligible for tax relief?</span>
+            <span class="example" onclick="setQuery('Who has children?')">Who has children?</span>
+            <span class="example" onclick="setQuery('What is the kindergeld_amount for maria_schmidt?')">What is the kindergeld amount for maria_schmidt?</span>
+            <br><br>
+            <button onclick="executeQuery()">Execute Query</button>
+            <button onclick="viewDatabase()">View Database</button>
+        </div>
+
+        <div class="section">
+            <h3>3. Results</h3>
+            <div id="results" class="results" style="display: none;">
+                <div id="resultContent"></div>
+            </div>
+            <div id="trace" style="display: none;">
+                <h4>Execution Trace:</h4>
+                <pre id="traceContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Embedded rule templates
+        const kindergeldRules = `If a person has children 
+and the person's yearly_income is below 68000 euros
+and at least one child is younger than 18 years
+and the person has tax_residence in Germany
+then the person is eligible for Kindergeld.`;
+
+        const taxReliefRules = `If a person's yearly_income is below 30000 euros
+and the person has tax_residence in Germany
+then the person is eligible for low_income_tax_relief.
+
+If a person is eligible for low_income_tax_relief
+and the person has children
+then the person gets additional_family_tax_benefits.`;
+
+        function loadKindergeld() {
+            document.getElementById('aceRules').value = kindergeldRules;
+        }
+
+        function loadTaxRelief() {
+            document.getElementById('aceRules').value = taxReliefRules;
+        }
+
+        function clearRules() {
+            document.getElementById('aceRules').value = '';
+        }
+
+        function setQuery(query) {
+            document.getElementById('query').value = query;
+        }
+
+        async function executeQuery() {
+            const rules = document.getElementById('aceRules').value;
+            const query = document.getElementById('query').value;
+
+            const resultsDiv = document.getElementById('results');
+            const traceDiv = document.getElementById('trace');
+            const resultContent = document.getElementById('resultContent');
+            const traceContent = document.getElementById('traceContent');
+
+            try {
+                const response = await fetch('/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rules, query })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = `<div class="success">✓ Query executed successfully</div>`;
+
+                    // Display the answer prominently
+                    if (data.answer) {
+                        html += `<div class="answer-box">
+                            <h4>Answer:</h4>
+                            <p>${data.answer}</p>
+                        </div>`;
+                    }
+
+                    // Display structured results
+                    if (data.results && data.results.length > 0) {
+                        html += `<p><strong>Detailed Results:</strong></p>
+                                <pre>${JSON.stringify(data.results, null, 2)}</pre>`;
+                    }
+
+                    html += `<p><strong>Knowledge Base:</strong> ${data.facts_count} facts | ${data.rules_count} rules</p>`;
+
+                    resultContent.innerHTML = html;
+                } else {
+                    resultContent.innerHTML = `
+                        <div class="error">✗ Query failed</div>
+                        <p><strong>Error:</strong> ${data.error}</p>
+                    `;
+                }
+
+                traceContent.textContent = data.execution_trace.join('\n');
+                resultsDiv.style.display = 'block';
+                traceDiv.style.display = 'block';
+
+            } catch (error) {
+                resultContent.innerHTML = `<div class="error">✗ Network error: ${error.message}</div>`;
+                resultsDiv.style.display = 'block';
+            }
+        }
+
+        async function viewDatabase() {
+            try {
+                const response = await fetch('/database');
+                const data = await response.json();
+
+                const resultContent = document.getElementById('resultContent');
+                resultContent.innerHTML = `
+                    <div class="success">Database Content:</div>
+                    <h4>Persons:</h4>
+                    <pre>${JSON.stringify(data.persons, null, 2)}</pre>
+                    <h4>Children:</h4>
+                    <pre>${JSON.stringify(data.children, null, 2)}</pre>
+                `;
+
+                document.getElementById('results').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching database:', error);
+            }
+        }
+
+        // Load default rules on page load
+        window.onload = function() {
+            loadKindergeld();
+        };
+    </script>
+</body>
+</html>
