@@ -8,10 +8,16 @@ https://makertube.net/w/hzAdbd5UUCEnRE5jwjYboV
 
 ## Screenshots:
 
-![img.png](docs/img_2.png)
+The user can run queries on facts and rules formulated in ACE:
+
+![img.png](docs/img_3.png)
 
 The user can upload data as a CSV-file which is turned into human-readable, but also inferable ACE code.
 It is then possible to run human-readable queries on this data.
+
+![img.png](docs/img_4.png)
+
+![img.png](docs/img_5.png)
 
 ## Other Thoughts
 
