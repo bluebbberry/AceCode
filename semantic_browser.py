@@ -3,6 +3,7 @@
 ACE Semantic Rules Desktop IDE
 A desktop application for editing ACE rules, facts, and executing queries
 IntelliJ-style layout with file explorer, main editor, and results panel
+Enhanced with CSV upload and LLM-powered ACE conversion
 """
 
 import tkinter as tk
@@ -15,6 +16,9 @@ import json
 import os
 import threading
 from pathlib import Path
+import csv
+import requests
+import pandas as pd
 
 
 # Simple Prolog-like inference engine (same as web version)
@@ -148,6 +152,110 @@ class PrologEngine:
                         age -= 1
                     return age
         return 0
+
+
+class OllamaClient:
+    def __init__(self, base_url: str = "http://localhost:11434"):
+        self.base_url = base_url.rstrip('/')
+
+    def is_available(self) -> bool:
+        """Check if Ollama is available"""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            return response.status_code == 200
+        except:
+            return False
+
+    def get_available_models(self) -> List[str]:
+        """Get list of available models"""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=10)
+            if response.status_code == 200:
+                models = response.json().get('models', [])
+                return [model['name'] for model in models]
+        except:
+            pass
+        return []
+
+    def convert_csv_to_ace(self, csv_data: str, model: str = "llama3.2") -> str:
+        """Convert CSV data to ACE format using LLM"""
+        prompt = f"""You are an expert in converting structured data to ACE (Attempto Controlled English) format.
+
+Given the following CSV data, convert it into ACE facts. Follow these rules:
+1. Each row should become ACE facts about an entity
+2. Use proper ACE syntax like "X is a Y", "X has Z", "X's Y is Z"
+3. Convert column headers to meaningful predicates
+4. Use underscores instead of spaces in identifiers
+5. Make facts clear and semantically meaningful
+6. Only return the ACE facts, no explanations
+
+CSV Data:
+{csv_data}
+
+Convert this to ACE facts:"""
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.1,
+                        "num_predict": 2000
+                    }
+                },
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                return result.get('response', '').strip()
+            else:
+                raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+        except Exception as e:
+            raise Exception(f"LLM conversion failed: {str(e)}")
+
+
+class CSVProcessor:
+    def __init__(self, ollama_client: OllamaClient):
+        self.ollama = ollama_client
+
+    def process_csv_file(self, filepath: str, model: str = "llama3.2") -> str:
+        """Process CSV file and convert to ACE"""
+        try:
+            # Read CSV with pandas for better handling
+            df = pd.read_csv(filepath)
+
+            # Clean column names
+            df.columns = df.columns.str.strip().str.replace(' ', '_').str.lower()
+
+            # Convert to CSV string for LLM (first 20 rows to avoid token limits)
+            if len(df) > 20:
+                sample_df = df.head(20)
+                csv_string = sample_df.to_csv(index=False)
+                csv_string += f"\n# Note: Showing first 20 rows of {len(df)} total rows"
+            else:
+                csv_string = df.to_csv(index=False)
+
+            # Convert using LLM
+            ace_facts = self.ollama.convert_csv_to_ace(csv_string, model)
+
+            # Add metadata
+            metadata = f"""# CSV to ACE Conversion
+# Source file: {os.path.basename(filepath)}
+# Rows processed: {min(20, len(df))} of {len(df)}
+# Columns: {', '.join(df.columns)}
+# Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+"""
+
+            return metadata + ace_facts
+
+        except Exception as e:
+            raise Exception(f"CSV processing failed: {str(e)}")
 
 
 class SemanticBrowser:
@@ -474,6 +582,10 @@ class ACEIDE:
         # Initialize semantic browser
         self.browser = SemanticBrowser()
 
+        # Initialize Ollama client and CSV processor
+        self.ollama_client = OllamaClient()
+        self.csv_processor = CSVProcessor(self.ollama_client)
+
         # File and project management
         self.current_file = None
         self.is_modified = False
@@ -490,6 +602,29 @@ class ACEIDE:
 
         # Bind events
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        # Check Ollama availability at startup
+        self.check_ollama_availability()
+
+    def check_ollama_availability(self):
+        """Check if Ollama is available and show status"""
+
+        def check_thread():
+            if self.ollama_client.is_available():
+                models = self.ollama_client.get_available_models()
+                if models:
+                    self.root.after(0, lambda: self.status_bar.config(
+                        text=f"✅ Ollama available with {len(models)} models: {', '.join(models[:3])}{'...' if len(models) > 3 else ''}"))
+                else:
+                    self.root.after(0, lambda: self.status_bar.config(
+                        text="⚠️ Ollama available but no models found"))
+            else:
+                self.root.after(0, lambda: self.status_bar.config(
+                    text="❌ Ollama not available (CSV conversion disabled)"))
+
+        thread = threading.Thread(target=check_thread)
+        thread.daemon = True
+        thread.start()
 
     def create_default_workspace(self):
         """Create default workspace with sample files"""
@@ -521,6 +656,9 @@ class ACEIDE:
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(label="New File", command=self.new_file, accelerator="Ctrl+N")
         file_menu.add_command(label="Open File", command=self.open_file, accelerator="Ctrl+O")
+        file_menu.add_separator()
+        file_menu.add_command(label="📊 Upload CSV", command=self.upload_csv, accelerator="Ctrl+U")
+        file_menu.add_separator()
         file_menu.add_command(label="Save", command=self.save_file, accelerator="Ctrl+S")
         file_menu.add_command(label="Save As", command=self.save_as_file, accelerator="Ctrl+Shift+S")
         file_menu.add_separator()
@@ -538,13 +676,360 @@ class ACEIDE:
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Toggle Explorer", command=self.toggle_explorer)
 
+        # Tools menu
+        tools_menu = Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="🤖 Ollama Settings", command=self.show_ollama_settings)
+        tools_menu.add_command(label="📋 CSV Conversion History", command=self.show_csv_history)
+
         # Keyboard shortcuts
         self.root.bind('<Control-n>', lambda e: self.new_file())
         self.root.bind('<Control-o>', lambda e: self.open_file())
+        self.root.bind('<Control-u>', lambda e: self.upload_csv())
         self.root.bind('<Control-s>', lambda e: self.save_file())
         self.root.bind('<Control-Shift-S>', lambda e: self.save_as_file())
         self.root.bind('<F5>', lambda e: self.refresh_explorer())
         self.root.bind('<Control-Return>', lambda e: self.execute_current_query())
+
+    def upload_csv(self):
+        """Upload and convert CSV file to ACE"""
+        if not self.ollama_client.is_available():
+            messagebox.showerror("Ollama Not Available",
+                                 "Ollama is not running or not available.\n\n"
+                                 "Please ensure Ollama is installed and running at http://localhost:11434")
+            return
+
+        # Select CSV file
+        csv_file = filedialog.askopenfilename(
+            title="Select CSV File to Convert",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            initialdir=os.path.expanduser("~")
+        )
+
+        if not csv_file:
+            return
+
+        # Show conversion dialog
+        self.show_csv_conversion_dialog(csv_file)
+
+    def show_csv_conversion_dialog(self, csv_file: str):
+        """Show CSV conversion dialog with options"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Convert CSV to ACE")
+        dialog.geometry("600x500")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + 100,
+            self.root.winfo_rooty() + 100
+        ))
+
+        # File info
+        info_frame = ttk.LabelFrame(dialog, text="File Information")
+        info_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(info_frame, text=f"File: {os.path.basename(csv_file)}").pack(anchor=tk.W, padx=5, pady=2)
+
+        # Try to read CSV and show preview
+        try:
+            df = pd.read_csv(csv_file)
+            ttk.Label(info_frame, text=f"Rows: {len(df)} | Columns: {len(df.columns)}").pack(anchor=tk.W, padx=5,
+                                                                                             pady=2)
+            ttk.Label(info_frame,
+                      text=f"Columns: {', '.join(df.columns[:5])}{'...' if len(df.columns) > 5 else ''}").pack(
+                anchor=tk.W, padx=5, pady=2)
+        except Exception as e:
+            ttk.Label(info_frame, text=f"Error reading file: {str(e)}", foreground="red").pack(anchor=tk.W, padx=5,
+                                                                                               pady=2)
+
+        # Model selection
+        model_frame = ttk.LabelFrame(dialog, text="LLM Model Selection")
+        model_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        available_models = self.ollama_client.get_available_models()
+        if not available_models:
+            ttk.Label(model_frame, text="No models available", foreground="red").pack(anchor=tk.W, padx=5, pady=2)
+            return
+
+        model_var = tk.StringVar(value=available_models[0] if available_models else "")
+        ttk.Label(model_frame, text="Select model:").pack(anchor=tk.W, padx=5, pady=2)
+        model_combo = ttk.Combobox(model_frame, textvariable=model_var, values=available_models, state="readonly")
+        model_combo.pack(fill=tk.X, padx=5, pady=2)
+
+        # Output filename
+        output_frame = ttk.LabelFrame(dialog, text="Output Settings")
+        output_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        default_name = os.path.splitext(os.path.basename(csv_file))[0] + "_facts.ace"
+        output_var = tk.StringVar(value=default_name)
+        ttk.Label(output_frame, text="Output filename:").pack(anchor=tk.W, padx=5, pady=2)
+        output_entry = ttk.Entry(output_frame, textvariable=output_var)
+        output_entry.pack(fill=tk.X, padx=5, pady=2)
+
+        # Preview area
+        preview_frame = ttk.LabelFrame(dialog, text="CSV Preview")
+        preview_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        preview_text = scrolledtext.ScrolledText(
+            preview_frame,
+            wrap=tk.NONE,
+            font=("Consolas", 10),
+            height=8
+        )
+        preview_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Show CSV preview
+        try:
+            df = pd.read_csv(csv_file)
+            preview_content = df.head(10).to_string(index=False)
+            preview_text.insert('1.0', preview_content)
+        except Exception as e:
+            preview_text.insert('1.0', f"Error reading CSV: {str(e)}")
+
+        # Progress bar
+        progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(dialog, variable=progress_var, mode='indeterminate')
+        progress_bar.pack(fill=tk.X, padx=10, pady=5)
+
+        # Status label
+        status_var = tk.StringVar(value="Ready to convert")
+        status_label = ttk.Label(dialog, textvariable=status_var)
+        status_label.pack(padx=10, pady=2)
+
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        def start_conversion():
+            """Start the CSV conversion process"""
+            model = model_var.get()
+            output_filename = output_var.get()
+
+            if not model:
+                messagebox.showerror("Error", "Please select a model")
+                return
+
+            if not output_filename:
+                messagebox.showerror("Error", "Please enter an output filename")
+                return
+
+            # Disable buttons and start progress
+            convert_btn.config(state='disabled')
+            cancel_btn.config(text="Close", command=dialog.destroy)
+            progress_bar.start()
+            status_var.set("Converting CSV to ACE...")
+
+            def conversion_thread():
+                try:
+                    # Process CSV file
+                    ace_content = self.csv_processor.process_csv_file(csv_file, model)
+
+                    # Save to workspace
+                    output_path = os.path.join(self.workspace_path, output_filename)
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write(ace_content)
+
+                    # Update UI on main thread
+                    self.root.after(0, lambda: conversion_success(output_path, ace_content))
+
+                except Exception as e:
+                    self.root.after(0, lambda: conversion_error(str(e)))
+
+            def conversion_success(output_path, ace_content):
+                progress_bar.stop()
+                status_var.set("✅ Conversion completed successfully!")
+
+                # Show success message
+                messagebox.showinfo("Success",
+                                    f"CSV successfully converted to ACE format!\n\n"
+                                    f"Saved as: {os.path.basename(output_path)}")
+
+                # Refresh explorer and open the new file
+                self.refresh_explorer()
+                self.open_file_by_path(output_path)
+
+                dialog.destroy()
+
+            def conversion_error(error_msg):
+                progress_bar.stop()
+                status_var.set("❌ Conversion failed")
+                convert_btn.config(state='normal')
+                cancel_btn.config(text="Cancel", command=dialog.destroy)
+
+                messagebox.showerror("Conversion Error",
+                                     f"Failed to convert CSV:\n\n{error_msg}")
+
+            # Start conversion in background thread
+            thread = threading.Thread(target=conversion_thread)
+            thread.daemon = True
+            thread.start()
+
+        # Create buttons BEFORE using them
+        convert_btn = ttk.Button(button_frame, text="🤖 Convert with LLM", command=start_conversion)
+        convert_btn.pack(side=tk.LEFT, padx=5)
+
+        cancel_btn = ttk.Button(button_frame, text="Cancel", command=dialog.destroy)
+        cancel_btn.pack(side=tk.RIGHT, padx=5)
+
+        # Enable/disable convert button based on model availability
+        if not available_models:
+            convert_btn.config(state='disabled')
+            status_var.set("❌ No models available - check Ollama connection")
+
+    def show_ollama_settings(self):
+        """Show Ollama settings dialog"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Ollama Settings")
+        dialog.geometry("500x400")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + 150,
+            self.root.winfo_rooty() + 150
+        ))
+
+        # Connection status
+        status_frame = ttk.LabelFrame(dialog, text="Connection Status")
+        status_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        status_text = tk.Text(status_frame, height=4, font=("Consolas", 10))
+        status_text.pack(fill=tk.X, padx=5, pady=5)
+
+        def refresh_status():
+            status_text.delete('1.0', tk.END)
+            if self.ollama_client.is_available():
+                models = self.ollama_client.get_available_models()
+                status_text.insert('1.0', f"✅ Connected to Ollama\n")
+                status_text.insert(tk.END, f"URL: {self.ollama_client.base_url}\n")
+                status_text.insert(tk.END, f"Available models: {len(models)}\n")
+                if models:
+                    status_text.insert(tk.END, f"Models: {', '.join(models)}")
+            else:
+                status_text.insert('1.0', f"❌ Cannot connect to Ollama\n")
+                status_text.insert(tk.END, f"URL: {self.ollama_client.base_url}\n")
+                status_text.insert(tk.END, f"Make sure Ollama is running")
+
+        refresh_status()
+
+        # URL configuration
+        url_frame = ttk.LabelFrame(dialog, text="Server Configuration")
+        url_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        url_var = tk.StringVar(value=self.ollama_client.base_url)
+        ttk.Label(url_frame, text="Ollama URL:").pack(anchor=tk.W, padx=5, pady=2)
+        url_entry = ttk.Entry(url_frame, textvariable=url_var, width=50)
+        url_entry.pack(fill=tk.X, padx=5, pady=2)
+
+        def update_url():
+            new_url = url_var.get()
+            self.ollama_client.base_url = new_url.rstrip('/')
+            self.csv_processor.ollama = self.ollama_client
+            refresh_status()
+
+        ttk.Button(url_frame, text="Update & Test Connection", command=update_url).pack(pady=5)
+
+        # Model management
+        models_frame = ttk.LabelFrame(dialog, text="Available Models")
+        models_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        models_listbox = tk.Listbox(models_frame, font=("Consolas", 10))
+        models_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        def refresh_models():
+            models_listbox.delete(0, tk.END)
+            models = self.ollama_client.get_available_models()
+            for model in models:
+                models_listbox.insert(tk.END, model)
+
+        refresh_models()
+
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        ttk.Button(button_frame, text="Refresh", command=lambda: [refresh_status(), refresh_models()]).pack(
+            side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Close", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def show_csv_history(self):
+        """Show CSV conversion history"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("CSV Conversion History")
+        dialog.geometry("700x500")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + 100,
+            self.root.winfo_rooty() + 100
+        ))
+
+        # History list
+        history_frame = ttk.LabelFrame(dialog, text="Converted Files")
+        history_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Create treeview for file list
+        columns = ("Filename", "Type", "Size", "Modified")
+        tree = ttk.Treeview(history_frame, columns=columns, show="tree headings")
+
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=120)
+
+        tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Populate with ACE files from workspace
+        for filename in os.listdir(self.workspace_path):
+            filepath = os.path.join(self.workspace_path, filename)
+            if os.path.isfile(filepath) and filename.endswith('.ace'):
+                try:
+                    stat = os.stat(filepath)
+                    size = f"{stat.st_size} bytes"
+                    modified = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+
+                    # Determine type
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read().lower()
+                        if 'csv to ace conversion' in content:
+                            file_type = "CSV→ACE"
+                        elif 'if ' in content and 'then ' in content:
+                            file_type = "Rules"
+                        elif any(line.endswith('.') and ' is a ' in line for line in content.split('\n')):
+                            file_type = "Facts"
+                        else:
+                            file_type = "Other"
+
+                    tree.insert('', 'end', text=f"📄 {filename}",
+                                values=(filename, file_type, size, modified))
+                except:
+                    pass
+
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        def open_selected():
+            selection = tree.selection()
+            if selection:
+                item = tree.item(selection[0])
+                filename = item['values'][0]
+                filepath = os.path.join(self.workspace_path, filename)
+                self.open_file_by_path(filepath)
+                dialog.destroy()
+
+        ttk.Button(button_frame, text="Open Selected", command=open_selected).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Refresh", command=lambda: [tree.delete(*tree.get_children()),
+                                                                  dialog.destroy(),
+                                                                  self.show_csv_history()]).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Close", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
     def create_interface(self):
         """Create the IntelliJ-style interface"""
@@ -579,6 +1064,10 @@ class ACEIDE:
         explorer_header.pack(fill=tk.X, padx=5, pady=2)
 
         ttk.Label(explorer_header, text="📁 Project Explorer", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT)
+
+        # Add CSV upload button to header
+        ttk.Button(explorer_header, text="📊", width=3, command=self.upload_csv,
+                   style='Accent.TButton').pack(side=tk.RIGHT, padx=2)
         ttk.Button(explorer_header, text="⟳", width=3, command=self.refresh_explorer).pack(side=tk.RIGHT)
 
         # File tree
@@ -617,6 +1106,10 @@ class ACEIDE:
         self.execute_btn = ttk.Button(toolbar, text="▶ Execute", command=self.execute_current_query)
         self.execute_btn.pack(side=tk.RIGHT, padx=5)
         self.execute_btn.config(state='disabled')
+
+        # CSV button
+        self.csv_btn = ttk.Button(toolbar, text="📊 CSV", command=self.upload_csv)
+        self.csv_btn.pack(side=tk.RIGHT, padx=5)
 
         # Document type indicator
         self.doc_type_label = ttk.Label(toolbar, text="", font=("Segoe UI", 9))
@@ -711,7 +1204,9 @@ class ACEIDE:
                             try:
                                 with open(filepath, 'r', encoding='utf-8') as f:
                                     content = f.read().lower()
-                                    if 'if ' in content and 'then ' in content:
+                                    if 'csv to ace conversion' in content:
+                                        icon = "📊"  # CSV-converted facts
+                                    elif 'if ' in content and 'then ' in content:
                                         icon = "📋"  # Rules
                                     elif any(line.endswith('.') and ' is a ' in line for line in content.split('\n')):
                                         icon = "📝"  # Facts
@@ -774,7 +1269,8 @@ class ACEIDE:
                     old_filename = os.path.basename(old_filepath)
                     # Import simpledialog for rename functionality
                     import tkinter.simpledialog
-                    new_filename = tkinter.simpledialog.askstring("Rename File", "New filename:", initialvalue=old_filename)
+                    new_filename = tkinter.simpledialog.askstring("Rename File", "New filename:",
+                                                                  initialvalue=old_filename)
                     if new_filename and new_filename != old_filename:
                         new_filepath = os.path.join(os.path.dirname(old_filepath), new_filename)
                         os.rename(old_filepath, new_filepath)
@@ -804,6 +1300,10 @@ class ACEIDE:
             elif 'if ' in content_lower and 'then ' in content_lower:
                 self.current_doc_type = 'rules'
                 self.doc_type_label.config(text="📋 Rules", foreground="green")
+                self.execute_btn.config(state='disabled')
+            elif 'csv to ace conversion' in content_lower:
+                self.current_doc_type = 'csv_facts'
+                self.doc_type_label.config(text="📊 CSV Facts", foreground="purple")
                 self.execute_btn.config(state='disabled')
             elif any(line.endswith('.') and ' is a ' in line for line in content.split('\n')):
                 self.current_doc_type = 'facts'
@@ -951,7 +1451,7 @@ class ACEIDE:
         rules_content = ""
         facts_content = ""
 
-        # Look for rules and facts files
+        # Look for rules and facts files (including CSV-converted facts)
         for filename in os.listdir(self.workspace_path):
             filepath = os.path.join(self.workspace_path, filename)
             if os.path.isfile(filepath) and filename.endswith('.ace'):
@@ -962,7 +1462,8 @@ class ACEIDE:
 
                         if 'if ' in content_lower and 'then ' in content_lower:
                             rules_content += content + "\n\n"
-                        elif any(line.endswith('.') and ' is a ' in line for line in content.split('\n')):
+                        elif (any(line.endswith('.') and ' is a ' in line for line in content.split('\n')) or
+                              'csv to ace conversion' in content_lower):
                             facts_content += content + "\n\n"
                 except:
                     pass
@@ -1081,6 +1582,8 @@ def main():
         print("🔍 Open query files and press Ctrl+Enter to execute")
         print("📋 Create rules files with 'If...then...' statements")
         print("📝 Create facts files with 'person is a...' statements")
+        print("📊 Upload CSV files via File→Upload CSV or Ctrl+U")
+        print("🤖 Ensure Ollama is running for CSV conversion")
 
         ide.run()
 
