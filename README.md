@@ -19,6 +19,10 @@ It is then possible to run human-readable queries on this data.
 
 ![img.png](docs/img_5.png)
 
+And use the result for further queries:
+
+![img.png](docs/img_6.png)
+
 ## Other Thoughts
 
 For the universal processing of documents based on attempto controlled german (based on https://en.wikipedia.org/wiki/Attempto_Controlled_English).
