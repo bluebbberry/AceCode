@@ -189,6 +189,16 @@ Given the following CSV data, convert it into ACE facts. Follow these rules:
 5. Make facts clear and semantically meaningful
 6. Only return the ACE facts, no explanations
 
+The facts should look like this (as an example):
+
+hans_mueller is a person.
+hans_mueller has a yearly_income of 25000 euros.
+hans_mueller has tax_residence in Germany.
+hans_mueller has age 28 years.
+child_67555 is a child.
+hans_mueller has child child_67555.
+child_67555 has a birthdate of 2020-09-03.
+
 CSV Data:
 {csv_data}
 
