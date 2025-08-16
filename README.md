@@ -1,16 +1,16 @@
-# SemanticWebBrowser
+# AceCode
 
 Description of idea: [Semantic.Web.Browser_2025_08_13_5.pdf](https://github.com/user-attachments/files/21751119/Semantic.Web.Browser_2025_08_13_5.pdf)
 
 ## Demo
 
-Video-Demo: https://makertube.net/w/sF8xPqrsawWarvyxuW8kbh
+Demo-Video: https://makertube.net/w/gEqphVeFZvB3hCGsp7H6Qv
 
 Screenshots:
 
-![img.png](docs/img.png)
+![img.png](docs/img_2.png)
 
-![img.png](docs/img_1.png)
+It's a neuro-symbolic tool that works like an IDE but with human-readable code based on attempto controlled english.
 
 ## Other Thoughts
 
