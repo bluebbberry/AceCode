@@ -1,16 +1,17 @@
 # AceCode
 
-Description of idea: [Semantic.Web.Browser_2025_08_13_5.pdf](https://github.com/user-attachments/files/21751119/Semantic.Web.Browser_2025_08_13_5.pdf)
+Combines a neuro-symbolic AI system (see Neural | Symbolic Type) with Attempto Controlled English, which is a controlled natural language that looks like English but is formally defined and as powerful as first order logic.
 
-## Demo
+## Demo Video
 
-Demo-Video: https://makertube.net/w/gEqphVeFZvB3hCGsp7H6Qv
+https://makertube.net/w/gEqphVeFZvB3hCGsp7H6Qv
 
-Screenshots:
+## Screenshots:
 
 ![img.png](docs/img_2.png)
 
-It's a neuro-symbolic tool that works like an IDE but with human-readable code based on attempto controlled english.
+The user can upload data as a CSV-file which is turned into human-readable, but also inferable ACE code.
+It is then possible to run human-readable queries on this data.
 
 ## Other Thoughts
 
@@ -24,14 +25,6 @@ Counter-design to vibe-coding:
 
 The fundamental idea behind all of this is to give users back control on their language, with which they interact with their data as well as the underlying description of whatever they are trying to create/describe or retrieve. Instead of the alchemistic streak that vibe coding has, ACE-coding emphasizes the "engineering"-aspect of "prompt-engineering".
 
-## Argumentation
-
-[universal document processor_4.pdf](https://github.com/user-attachments/files/21687879/universal.document.processor_4.pdf)
-
 ## Basic Architecture
 
 <img width="1542" height="822" alt="image" src="https://github.com/user-attachments/assets/1ec0c20d-1366-4ccd-93ef-6fc47a97dfe9" />
-
-## UI-Preview:
-
-<img width="1536" height="524" alt="image" src="https://github.com/user-attachments/assets/826e2e0e-dbd0-4275-9b70-5b9e19e54ca6" />
