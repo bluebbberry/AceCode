@@ -4,7 +4,7 @@ Combines a neuro-symbolic AI system (see Neural | Symbolic Type) with Attempto C
 
 ## Demo Video
 
-https://makertube.net/w/gEqphVeFZvB3hCGsp7H6Qv
+https://makertube.net/w/hzAdbd5UUCEnRE5jwjYboV
 
 ## Screenshots:
 
