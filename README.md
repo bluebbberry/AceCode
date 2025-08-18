@@ -38,3 +38,7 @@ The fundamental idea behind all of this is to give users back control on their l
 ## Basic Architecture
 
 <img width="1542" height="822" alt="image" src="https://github.com/user-attachments/assets/1ec0c20d-1366-4ccd-93ef-6fc47a97dfe9" />
+
+## Potential Future Development - SemanticWebBrowser
+
+[Semantic.Web.Browser_2025_08_13_5-6.pdf](https://github.com/user-attachments/files/21835981/Semantic.Web.Browser_2025_08_13_5-6.pdf)
