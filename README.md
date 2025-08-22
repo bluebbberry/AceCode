@@ -41,4 +41,4 @@ The fundamental idea behind all of this is to give users back control on their l
 
 ## Potential Future Development - SemanticWebBrowser
 
-[Semantic.Web.Browser_2025_08_13_5-6.pdf](https://github.com/user-attachments/files/21835981/Semantic.Web.Browser_2025_08_13_5-6.pdf)
+[Semantic.Web.Browser_2025_08_22.pdf](https://github.com/user-attachments/files/21941171/Semantic.Web.Browser_2025_08_22.pdf)
