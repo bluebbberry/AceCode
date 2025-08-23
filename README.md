@@ -47,6 +47,6 @@ Here is a description of the next development iteration of AceCode, which would 
 
 However, the problem here is that the current web is fragmented and there needs to be a mechanism to bridge the gap here. For this, controlled forward propagation is introduced as a potential solution:
 
-[Semantic.Web.Browser.-.Immediate.Forward.Propagation_4.pdf](https://github.com/user-attachments/files/21947874/Semantic.Web.Browser.-.Immediate.Forward.Propagation_4.pdf)
+[Semantic Web Browser - Controlled Forward Propagation.pdf](https://github.com/user-attachments/files/21947876/Semantic.Web.Browser.-.Controlled.Forward.Propagation.pdf)
 
 The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a language-based interface (controlled natural language as an interface), expand on the "Neural | Symbolic"-AI-approach with the controlled forward propagation mechanism to overcome the limitations of the mismatch between different web paradigms without loosing the semantic-web-defining precision and determinism (paradigm agnostic but deterministic), and to build a IDE-like semantic web browser from it all.
