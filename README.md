@@ -41,4 +41,11 @@ The fundamental idea behind all of this is to give users back control on their l
 
 ## Potential Future Development - SemanticWebBrowser
 
+Here is a description of the next development iteration of AceCode, which would include connecting data from different semantic sources:
+
 [Semantic.Web.Browser_2025_08_22.pdf](https://github.com/user-attachments/files/21941171/Semantic.Web.Browser_2025_08_22.pdf)
+
+However, the problem here is that the current web is fragmented and there needs to be a mechanism to bridge the gap here. For this, immediate forward propagation is introduced as a potential solution:
+
+[Semantic Web Browser - Immediate Forward Propagation_2.pdf](https://github.com/user-attachments/files/21947791/Semantic.Web.Browser.-.Immediate.Forward.Propagation_2.pdf)
+
