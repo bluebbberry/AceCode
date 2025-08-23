@@ -45,8 +45,8 @@ Here is a description of the next development iteration of AceCode, which would 
 
 [Semantic.Web.Browser_2025_08_22.pdf](https://github.com/user-attachments/files/21941171/Semantic.Web.Browser_2025_08_22.pdf)
 
-However, the problem here is that the current web is fragmented and there needs to be a mechanism to bridge the gap here. For this, immediate forward propagation is introduced as a potential solution:
+However, the problem here is that the current web is fragmented and there needs to be a mechanism to bridge the gap here. For this, controlled forward propagation is introduced as a potential solution:
 
 [Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf](https://github.com/user-attachments/files/21947799/Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf)
 
-The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a language-based interface (controlled natural language as an interface), expand on the "Neural | Symbolic"-AI-approach with the immediate forward propagation mechanism to overcome the limitations of the mismatch between different web paradigms without loosing the semantic-web-defining precision and determinism (paradigm agnostic but deterministic), and to build a IDE-like semantic web browser from it all.
+The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a language-based interface (controlled natural language as an interface), expand on the "Neural | Symbolic"-AI-approach with the controlled forward propagation mechanism to overcome the limitations of the mismatch between different web paradigms without loosing the semantic-web-defining precision and determinism (paradigm agnostic but deterministic), and to build a IDE-like semantic web browser from it all.
