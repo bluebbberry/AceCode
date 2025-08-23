@@ -47,5 +47,4 @@ Here is a description of the next development iteration of AceCode, which would 
 
 However, the problem here is that the current web is fragmented and there needs to be a mechanism to bridge the gap here. For this, immediate forward propagation is introduced as a potential solution:
 
-[Semantic Web Browser - Immediate Forward Propagation_2.pdf](https://github.com/user-attachments/files/21947791/Semantic.Web.Browser.-.Immediate.Forward.Propagation_2.pdf)
-
+[Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf](https://github.com/user-attachments/files/21947799/Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf)
