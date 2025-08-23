@@ -49,4 +49,4 @@ However, the problem here is that the current web is fragmented and there needs 
 
 [Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf](https://github.com/user-attachments/files/21947799/Semantic.Web.Browser.-.Immediate.Forward.Propagation_3.pdf)
 
-The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a language-based interface, expand on the "Neural | Symbolic"-AI-approach with the immediate forward propagation mechanism to overcome the limitations of the mismatch between different web paradigms and build a IDE-like semantic web browser from it all.
+The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a language-based interface (controlled natural language as an interface), expand on the "Neural | Symbolic"-AI-approach with the immediate forward propagation mechanism to overcome the limitations of the mismatch between different web paradigms without loosing the semantic-web-defining precision and determinism (paradigm agnostic but deterministic), and to build a IDE-like semantic web browser from it all.
