@@ -53,6 +53,6 @@ The innovation here would be to combine Neuro Symbolic AI with ACE to achieve a 
 
 Its a combination of three main idea, which have all been explored before but not combined into one product:
 
-- A semantic web browser with an IDE-like, language-based interface
-- Using ACE as a semantic web interface
+- A semantic web browser with an IDE-like, language-based interface to explore the semantic web
+- Using ACE as a semantic web interface to increase usability
 - Using LLMs to achieve web-paradigm agnostic semantic queries without losing determinism and semantic precision
