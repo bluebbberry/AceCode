@@ -41,6 +41,8 @@ The fundamental idea behind all of this is to give users back control on their l
 
 ## Potential Future Development - SemanticWebBrowser
 
+Paper: https://philpapers.org/rec/BINFPT-3
+
 Here is a description of the next development iteration of AceCode, which would include connecting data from different semantic sources:
 
 [Semantic.Web.Browser_2025_08_22.pdf](https://github.com/user-attachments/files/21941171/Semantic.Web.Browser_2025_08_22.pdf)
